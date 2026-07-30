@@ -10,9 +10,14 @@ database at any time without touching anything else.
 
 import os
 import re
+import base64
+import json
 import smtplib
 import socket
 import ssl
+import urllib.request
+import urllib.parse
+import urllib.error
 import time
 import logging
 from datetime import datetime, timezone
@@ -33,6 +38,11 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", SMTP_USER)
+MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "NEMO Listing Enquiries")
+SENDGRID_KEY = os.environ.get("SENDGRID_API_KEY", "")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
 # Comma-separated distribution list
 NOTIFY_TO = [a.strip() for a in os.environ.get("NOTIFY_TO", "").split(",") if a.strip()]
 ADMIN_USER = os.environ.get("ADMIN_USER", "seakeepers")
@@ -191,6 +201,74 @@ def enquiry():
     return jsonify(ok=True, id=enq_id), 200
 
 
+def _sendgrid_send(msg):
+    """
+    Preferred transport. HTTPS/443, and oktechsol.com's SPF record already
+    includes sendgrid.net, so mail genuinely authenticates as
+    jay@oktechsol.com rather than being rewritten by the provider.
+    """
+    if not SENDGRID_KEY:
+        raise RuntimeError("SENDGRID_API_KEY not configured")
+
+    payload = {
+        "personalizations": [{"to": [{"email": a} for a in NOTIFY_TO]}],
+        "from": {"email": MAIL_FROM, "name": MAIL_FROM_NAME},
+        "subject": msg["Subject"],
+        "content": [{"type": "text/plain", "value": msg.get_content()}],
+    }
+    if msg["Reply-To"]:
+        addr = msg["Reply-To"]
+        if "<" in addr:
+            name, email = addr.rsplit("<", 1)
+            payload["reply_to"] = {"email": email.strip(" >"), "name": name.strip()}
+        else:
+            payload["reply_to"] = {"email": addr.strip()}
+
+    req = urllib.request.Request(
+        "https://api.sendgrid.com/v3/mail/send",
+        data=json.dumps(payload).encode(),
+        method="POST",
+        headers={"Authorization": "Bearer " + SENDGRID_KEY, "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        if resp.status not in (200, 202):
+            raise RuntimeError(f"sendgrid returned {resp.status}")
+    log.info("sendgrid accepted mail for %s", NOTIFY_TO)
+    return "sendgrid"
+
+
+def _gmail_send(msg):
+    """
+    Primary transport. Render's free instances block outbound SMTP (25/465/587) —
+    the TCP connect hangs until the worker is killed. The Gmail REST API runs
+    over 443, which is open, so it works on the free plan.
+    """
+    if not (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REFRESH_TOKEN):
+        raise RuntimeError("Gmail API credentials not configured")
+
+    body = urllib.parse.urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "refresh_token": GOOGLE_REFRESH_TOKEN,
+        "grant_type": "refresh_token",
+    }).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=body, method="POST")
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        access = json.load(resp)["access_token"]
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    req = urllib.request.Request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        data=json.dumps({"raw": raw}).encode(),
+        method="POST",
+        headers={"Authorization": "Bearer " + access, "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        out = json.load(resp)
+    log.info("gmail api sent id=%s", out.get("id"))
+    return out.get("id")
+
+
 def _smtp_connect():
     """
     Render's container resolves smtp.gmail.com to an AAAA record first and has no
@@ -250,9 +328,52 @@ def _smtp_connect():
     raise RuntimeError("all SMTP attempts failed — last: " + str(last))
 
 
+def _dispatch(msg):
+    """
+    Try each transport in order and return the name of the one that worked.
+    SendGrid first (HTTPS, SPF-aligned for oktechsol.com), then Gmail API
+    (HTTPS but rewrites the From to the authenticated Google account), then
+    SMTP (blocked on Render's free tier, kept for portability).
+    """
+    errors = []
+    for name, fn in (("sendgrid", _sendgrid_send), ("gmail", _gmail_send), ("smtp", _smtp_send)):
+        try:
+            fn(msg)
+            return name
+        except Exception as e:
+            detail = f"{name}: {type(e).__name__}: {e}"
+            if isinstance(e, urllib.error.HTTPError):
+                try:
+                    detail += " | " + e.read().decode()[:200]
+                except Exception:
+                    pass
+            errors.append(detail)
+            log.warning("transport failed — %s", detail)
+    raise RuntimeError(" ;; ".join(errors))
+
+
+def _smtp_send(msg):
+    # Off by default: Render free instances block outbound 25/465/587 and the
+    # connect *hangs* rather than refusing, which kills the gunicorn worker
+    # mid-request. Set SMTP_ENABLED=1 only on a host with SMTP egress.
+    if os.environ.get("SMTP_ENABLED", "") not in ("1", "true", "yes"):
+        raise RuntimeError("SMTP disabled (set SMTP_ENABLED=1 to allow)")
+    if not (SMTP_USER and SMTP_PASS):
+        raise RuntimeError("SMTP not configured")
+    s = _smtp_connect()
+    try:
+        s.send_message(msg)
+    finally:
+        try:
+            s.quit()
+        except Exception:
+            pass
+    return "smtp"
+
+
 def send_notification(enq_id, created, v, ip):
-    if not (SMTP_USER and SMTP_PASS and NOTIFY_TO):
-        raise RuntimeError("SMTP or NOTIFY_TO not configured")
+    if not NOTIFY_TO:
+        raise RuntimeError("NOTIFY_TO not configured")
 
     subject = f"NEMO enquiry #{enq_id} — {v['name']}" + (f" ({v['country']})" if v["country"] else "")
     lines = [
@@ -277,20 +398,14 @@ def send_notification(enq_id, created, v, ip):
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = MAIL_FROM
+    msg["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM}>"
     msg["To"] = ", ".join(NOTIFY_TO)
     msg["Reply-To"] = f"{v['name']} <{v['email']}>"
     msg.set_content(body)
 
-    s = _smtp_connect()
-    try:
-        s.send_message(msg)
-    finally:
-        try:
-            s.quit()
-        except Exception:
-            pass
-    log.info("notified %s for enquiry %s", NOTIFY_TO, enq_id)
+    via = _dispatch(msg)
+    log.info("notified %s for enquiry %s via %s", NOTIFY_TO, enq_id, via)
+    return via
 
 
 def require_admin(fn):
@@ -355,35 +470,32 @@ td.m{{max-width:420px;white-space:pre-wrap}} a{{color:#59c6e6}}
 @app.get("/admin/smtp-test")
 @require_admin
 def smtp_test():
-    """Prove the outbound mail path works, and report exactly why if it doesn't."""
-    info = {"host": SMTP_HOST, "port": SMTP_PORT, "user": SMTP_USER, "to": NOTIFY_TO}
-    try:
-        info["ipv4"] = sorted(
-            {ai[4][0] for ai in socket.getaddrinfo(SMTP_HOST, None, socket.AF_INET, socket.SOCK_STREAM)}
-        )
-    except Exception as e:
-        info["ipv4_error"] = str(e)
+    """Prove the outbound mail path works, and report exactly which transport won."""
+    info = {
+        "from": MAIL_FROM,
+        "to": NOTIFY_TO,
+        "transports_configured": {
+            "sendgrid": bool(SENDGRID_KEY),
+            "gmail": bool(GOOGLE_CLIENT_ID and GOOGLE_REFRESH_TOKEN),
+            "smtp": bool(SMTP_USER and SMTP_PASS),
+        },
+    }
     try:
         msg = EmailMessage()
-        msg["Subject"] = "NEMO enquiry service — SMTP test"
-        msg["From"] = MAIL_FROM
+        msg["Subject"] = "NEMO enquiry service — delivery test"
+        msg["From"] = f"{MAIL_FROM_NAME} <{MAIL_FROM}>"
         msg["To"] = ", ".join(NOTIFY_TO)
         msg.set_content(
-            "This is a connectivity test from the NEMO NM2-100 enquiry intake service.\n"
-            "If you received this, enquiries from the listing page will reach this distribution list.\n"
+            "This is a delivery test from the NEMO NM2-100 enquiry intake service.\n\n"
+            "If you received this, enquiries submitted on the listing page will reach "
+            "this distribution list.\n\n"
+            "https://okie62.github.io/nemo-sub-listing/\n"
         )
-        s = _smtp_connect()
-        try:
-            s.send_message(msg)
-        finally:
-            try:
-                s.quit()
-            except Exception:
-                pass
+        info["via"] = _dispatch(msg)
         info["sent"] = True
     except Exception as e:
         info["sent"] = False
-        info["error"] = f"{type(e).__name__}: {e}"
+        info["error"] = f"{type(e).__name__}: {e}"[:900]
     return jsonify(info), (200 if info.get("sent") else 500)
 
 
