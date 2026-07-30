@@ -227,6 +227,37 @@
   .btn-p:hover{background:#fff;transform:translateY(-2px)}
   .btn-s{border:1px solid var(--line);color:var(--pale)}
   .btn-s:hover{border-color:var(--foam);color:#fff}
+  /* ---------- enquiry form ---------- */
+  .enq{margin-top:34px;text-align:left}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
+  .f{display:block;margin-bottom:18px}
+  .f>span{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--pale);margin-bottom:8px}
+  .f>span i{color:var(--foam);font-style:normal}
+  .f input,.f select,.f textarea{
+    width:100%;background:rgba(5,19,31,.72);border:1px solid var(--line);color:var(--sand);
+    font-family:inherit;font-size:.98rem;padding:13px 14px;border-radius:2px;
+    transition:border-color .2s,background .2s;-webkit-appearance:none;appearance:none;
+  }
+  .f select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23a9d8e6' stroke-width='1.6' fill='none'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;
+  }
+  .f select option{background:#0a2233;color:var(--sand)}
+  .f textarea{resize:vertical;min-height:120px;line-height:1.6}
+  .f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--foam);background:rgba(5,19,31,.95)}
+  .f input.bad,.f textarea.bad{border-color:var(--accent)}
+  .f .err{display:block;margin-top:6px;font-size:12px;color:#e8836f;letter-spacing:0;text-transform:none}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .fbtn{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .fbtn button{border:none;cursor:pointer;font-family:inherit}
+  .fbtn button[disabled]{opacity:.55;cursor:progress}
+  .fnote{margin-top:16px;font-size:12.5px;color:var(--muted)}
+  .fmsg{margin-top:18px;font-size:.98rem;padding:0;max-height:0;overflow:hidden;transition:max-height .3s,padding .3s}
+  .fmsg.on{max-height:400px;padding:16px 18px;border-left:2px solid var(--foam);background:rgba(77,184,212,.08)}
+  .fmsg.bad{border-left-color:var(--accent);background:rgba(200,69,45,.1)}
+  .fmsg b{display:block;margin-bottom:4px;color:#fff}
+  .enq-done{text-align:left;padding:30px 0}
+  .enq-done h3{font-size:1.5rem;color:#fff;margin-bottom:12px}
 
   /* ---------- footer ---------- */
   footer{background:#030c14;padding:56px 40px 34px;border-top:1px solid var(--line)}
@@ -279,6 +310,8 @@
     .g-lg,.g-sm,.g-md,.g-third{grid-column:span 12;height:280px}
     .hero-meta{gap:22px}
     .cta{background-attachment:scroll}
+    .fgrid{grid-template-columns:1fr;gap:0}
+    .fbtn .btn{width:100%;text-align:center}
   }
 </style>
 </head>
@@ -307,7 +340,7 @@
       <div><span class="k">Occupancy</span><span class="v">2<small>1 pilot + 1 guest</small></span></div>
       <div><span class="k">Weight in air</span><span class="v">2,500 kg<small>5,510 lbs</small></span></div>
       <div><span class="k">Model</span><span class="v">NM2-100<small>Series production</small></span></div>
-      <div><span class="k">Design</span><span class="v">Red Dot<small>Best of the Best</small></span></div>
+      <div><span class="k">Price</span><span class="v">POA<small>Price on application</small></span></div>
     </div>
   </div>
 </header>
@@ -370,6 +403,7 @@
             <div class="row"><dt>Payload (no options)</dt><dd>200 kg / 440 lbs</dd></div>
             <div class="row"><dt>Max payload</dt><dd>250 kg / 551 lbs</dd></div>
             <div class="row"><dt>Drop weight</dt><dd>100 kg</dd></div>
+            <div class="row"><dt>Price</dt><dd><b>POA</b> &mdash; price on application</dd></div>
           </dl>
         </div>
 
@@ -579,11 +613,54 @@
     <div class="rv">
       <div class="sec-label" style="text-align:center">Enquiries</div>
       <h2>Register your interest</h2>
-      <p class="lede">Full documentation, survey access and viewing arrangements are available to qualified buyers on request.</p>
-      <div class="btns">
-        <a href="mailto:southpacific@seakeepers.org?subject=U-Boat%20Worx%20NEMO%20NM2-100%20%E2%80%94%20Enquiry" class="btn btn-p">Email Enquiry</a>
-        <a href="https://www.seakeepers.org/seakeepers-south-pacific/" target="_blank" rel="noopener" class="btn btn-s">SeaKeepers South Pacific</a>
-      </div>
+      <p class="lede">Price on application. Full documentation, survey access and viewing arrangements are available to qualified buyers on request.</p>
+
+      <form id="enq" class="enq" novalidate>
+        <div class="fgrid">
+          <label class="f"><span>Name <i>*</i></span>
+            <input name="name" type="text" autocomplete="name" required maxlength="120">
+          </label>
+          <label class="f"><span>Email <i>*</i></span>
+            <input name="email" type="email" autocomplete="email" required maxlength="200">
+          </label>
+          <label class="f"><span>Phone</span>
+            <input name="phone" type="tel" autocomplete="tel" maxlength="60">
+          </label>
+          <label class="f"><span>Country</span>
+            <input name="country" type="text" autocomplete="country-name" maxlength="80">
+          </label>
+          <label class="f"><span>I am enquiring as</span>
+            <select name="role">
+              <option value="">Please select</option>
+              <option>Private buyer</option>
+              <option>Yacht owner / owner&rsquo;s representative</option>
+              <option>Broker or agent</option>
+              <option>Research or institutional</option>
+              <option>Tourism / charter operator</option>
+              <option>Media or other</option>
+            </select>
+          </label>
+          <label class="f"><span>Timeframe</span>
+            <select name="timeframe">
+              <option value="">Please select</option>
+              <option>Immediate</option>
+              <option>Within 3 months</option>
+              <option>3&ndash;12 months</option>
+              <option>Exploratory</option>
+            </select>
+          </label>
+        </div>
+        <label class="f full"><span>Your enquiry <i>*</i></span>
+          <textarea name="message" rows="5" required maxlength="4000" placeholder="Price guidance, survey access, viewing at Cape Town, shipping, operator training&hellip;"></textarea>
+        </label>
+        <div class="hp" aria-hidden="true"><label>Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <div class="fbtn">
+          <button type="submit" class="btn btn-p" id="enqBtn">Send enquiry</button>
+          <a href="https://www.seakeepers.org/seakeepers-south-pacific/" target="_blank" rel="noopener" class="btn btn-s">SeaKeepers South Pacific</a>
+        </div>
+        <p class="fnote">Your details are held by The International SeaKeepers Society South Pacific for the purpose of this enquiry only.</p>
+        <div id="enqMsg" class="fmsg" role="status" aria-live="polite"></div>
+      </form>
     </div>
   </div>
 </section>
@@ -653,6 +730,98 @@ function closeLb(){lb.classList.remove('on');document.body.style.overflow=''}
 lb.addEventListener('click',closeLb);
 document.getElementById('lbx').addEventListener('click',closeLb);
 addEventListener('keydown',function(e){if(e.key==='Escape')closeLb()});
+
+/* ---------- enquiry form ---------- */
+var API='https://nemo-enquiries.onrender.com/enquiry';
+var FALLBACK='southpacific@seakeepers.org';
+var form=document.getElementById('enq'),btn=document.getElementById('enqBtn'),msg=document.getElementById('enqMsg');
+
+function clearErrors(){
+  form.querySelectorAll('.err').forEach(function(e){e.remove()});
+  form.querySelectorAll('.bad').forEach(function(e){e.classList.remove('bad')});
+}
+function fieldError(name,text){
+  var el=form.querySelector('[name="'+name+'"]');
+  if(!el)return;
+  el.classList.add('bad');
+  var s=document.createElement('span');s.className='err';s.textContent=text;
+  el.parentNode.appendChild(s);
+}
+function say(html,bad){
+  msg.innerHTML=html;
+  msg.className='fmsg on'+(bad?' bad':'');
+}
+
+form.addEventListener('submit',function(ev){
+  ev.preventDefault();
+  clearErrors();
+
+  var fd=new FormData(form),data={};
+  fd.forEach(function(v,k){data[k]=(''+v).trim()});
+  data.source=location.href;
+
+  var local={};
+  if(!data.name) local.name='Please enter your name.';
+  if(!data.email) local.email='Please enter your email address.';
+  else if(!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(data.email)) local.email='That email address does not look valid.';
+  if(!data.message) local.message='Please tell us briefly what you would like to know.';
+  if(Object.keys(local).length){
+    Object.keys(local).forEach(function(k){fieldError(k,local[k])});
+    say('Please correct the highlighted fields.',true);
+    form.querySelector('.bad').focus();
+    return;
+  }
+
+  btn.disabled=true;
+  var label=btn.textContent;
+  btn.textContent='Sending\u2026';
+  say('<b>Sending your enquiry\u2026</b>This can take up to 30 seconds while the secure intake service wakes.',false);
+
+  fetch(API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  }).then(function(r){
+    return r.json().catch(function(){return {ok:false}}).then(function(j){return {status:r.status,body:j}});
+  }).then(function(res){
+    if(res.status===200&&res.body.ok){
+      form.innerHTML='<div class="enq-done"><h3>Thank you \u2014 your enquiry has been received.</h3>'+
+        '<p>A reference has been recorded'+(res.body.id?' (enquiry&nbsp;#'+res.body.id+')':'')+
+        ' and the SeaKeepers South Pacific team has been notified. You can expect a reply to <b>'+
+        data.email.replace(/[<>&]/g,'')+'</b>.</p>'+
+        '<p style="margin-top:14px;color:var(--muted);font-size:13px">Price is on application and full documentation is released to qualified buyers.</p></div>';
+      form.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+    if(res.status===400&&res.body.errors){
+      Object.keys(res.body.errors).forEach(function(k){fieldError(k,res.body.errors[k])});
+      say('Please correct the highlighted fields.',true);
+    }else{
+      say('<b>We could not submit that automatically.</b>Please email <a href="mailto:'+FALLBACK+
+          '?subject=U-Boat%20Worx%20NEMO%20NM2-100%20%E2%80%94%20Enquiry">'+FALLBACK+'</a> and we will respond directly.',true);
+    }
+    btn.disabled=false;btn.textContent=label;
+  }).catch(function(){
+    say('<b>Network error.</b>Please email <a href="mailto:'+FALLBACK+
+        '?subject=U-Boat%20Worx%20NEMO%20NM2-100%20%E2%80%94%20Enquiry">'+FALLBACK+'</a> and we will respond directly.',true);
+    btn.disabled=false;btn.textContent=label;
+  });
+});
+
+// Warm the intake service when the enquiry section comes into view, so the
+// free-tier cold start is absorbed before the visitor presses Send.
+(function(){
+  var sec=document.getElementById('enquire'),warmed=false;
+  if(!sec||!('IntersectionObserver' in window))return;
+  new IntersectionObserver(function(es,o){
+    es.forEach(function(e){
+      if(e.isIntersecting&&!warmed){
+        warmed=true;o.disconnect();
+        fetch('https://nemo-enquiries.onrender.com/health',{mode:'cors'}).catch(function(){});
+      }
+    });
+  },{rootMargin:'400px'}).observe(sec);
+})();
 </script>
 </body>
 </html>

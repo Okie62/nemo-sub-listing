@@ -11,6 +11,7 @@ database at any time without touching anything else.
 import os
 import re
 import smtplib
+import socket
 import ssl
 import time
 import logging
@@ -190,6 +191,65 @@ def enquiry():
     return jsonify(ok=True, id=enq_id), 200
 
 
+def _smtp_connect():
+    """
+    Render's container resolves smtp.gmail.com to an AAAA record first and has no
+    IPv6 route out, producing 'Network is unreachable'. So resolve A (IPv4)
+    records explicitly and dial those, while still validating the TLS
+    certificate against the real hostname.
+
+    Order: each IPv4 address on 587 (STARTTLS) then 465 (implicit TLS),
+    finally the plain hostname as a last resort.
+    """
+    ctx = ssl.create_default_context()
+
+    ipv4 = []
+    try:
+        ipv4 = sorted(
+            {ai[4][0] for ai in socket.getaddrinfo(SMTP_HOST, None, socket.AF_INET, socket.SOCK_STREAM)}
+        )
+    except Exception as e:
+        log.warning("IPv4 resolve of %s failed: %s", SMTP_HOST, e)
+
+    attempts = [(ip, p) for ip in ipv4 for p in (SMTP_PORT, 465)]
+    attempts += [(SMTP_HOST, SMTP_PORT), (SMTP_HOST, 465)]
+
+    last = None
+    for host, port in attempts:
+        s = None
+        try:
+            if port == 465:
+                raw = socket.create_connection((str(host), port), timeout=25)
+                sock = ctx.wrap_socket(raw, server_hostname=SMTP_HOST)
+                s = smtplib.SMTP(timeout=25)
+                s.sock = sock
+                s.file = sock.makefile("rb")
+                code, _ = s.getreply()
+                if code != 220:
+                    raise smtplib.SMTPConnectError(code, "unexpected greeting")
+                s.ehlo()
+            else:
+                s = smtplib.SMTP(timeout=25)
+                s.connect(str(host), port)
+                # cert is validated against the real hostname, not the dialled IP
+                s._host = SMTP_HOST
+                s.ehlo()
+                s.starttls(context=ctx)
+                s.ehlo()
+            s.login(SMTP_USER, SMTP_PASS)
+            log.info("smtp connected via %s:%s", host, port)
+            return s
+        except Exception as e:
+            last = f"{host}:{port} {type(e).__name__}: {e}"
+            log.warning("smtp attempt failed — %s", last)
+            try:
+                if s is not None:
+                    s.close()
+            except Exception:
+                pass
+    raise RuntimeError("all SMTP attempts failed — last: " + str(last))
+
+
 def send_notification(enq_id, created, v, ip):
     if not (SMTP_USER and SMTP_PASS and NOTIFY_TO):
         raise RuntimeError("SMTP or NOTIFY_TO not configured")
@@ -222,11 +282,14 @@ def send_notification(enq_id, created, v, ip):
     msg["Reply-To"] = f"{v['name']} <{v['email']}>"
     msg.set_content(body)
 
-    ctx = ssl.create_default_context()
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=25) as s:
-        s.starttls(context=ctx)
-        s.login(SMTP_USER, SMTP_PASS)
+    s = _smtp_connect()
+    try:
         s.send_message(msg)
+    finally:
+        try:
+            s.quit()
+        except Exception:
+            pass
     log.info("notified %s for enquiry %s", NOTIFY_TO, enq_id)
 
 
@@ -287,6 +350,67 @@ td.m{{max-width:420px;white-space:pre-wrap}} a{{color:#59c6e6}}
 {''.join(trs) or '<tr><td colspan=10>No enquiries yet.</td></tr>'}
 </table></body></html>"""
     return Response(html, mimetype="text/html")
+
+
+@app.get("/admin/smtp-test")
+@require_admin
+def smtp_test():
+    """Prove the outbound mail path works, and report exactly why if it doesn't."""
+    info = {"host": SMTP_HOST, "port": SMTP_PORT, "user": SMTP_USER, "to": NOTIFY_TO}
+    try:
+        info["ipv4"] = sorted(
+            {ai[4][0] for ai in socket.getaddrinfo(SMTP_HOST, None, socket.AF_INET, socket.SOCK_STREAM)}
+        )
+    except Exception as e:
+        info["ipv4_error"] = str(e)
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "NEMO enquiry service — SMTP test"
+        msg["From"] = MAIL_FROM
+        msg["To"] = ", ".join(NOTIFY_TO)
+        msg.set_content(
+            "This is a connectivity test from the NEMO NM2-100 enquiry intake service.\n"
+            "If you received this, enquiries from the listing page will reach this distribution list.\n"
+        )
+        s = _smtp_connect()
+        try:
+            s.send_message(msg)
+        finally:
+            try:
+                s.quit()
+            except Exception:
+                pass
+        info["sent"] = True
+    except Exception as e:
+        info["sent"] = False
+        info["error"] = f"{type(e).__name__}: {e}"
+    return jsonify(info), (200 if info.get("sent") else 500)
+
+
+@app.post("/admin/resend/<int:enq_id>")
+@require_admin
+def resend(enq_id):
+    ensure_schema()
+    with db() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT id, created_at, name, email, phone, country, role, timeframe, message, ip
+               FROM nemo_enquiries WHERE id=%s""",
+            (enq_id,),
+        )
+        r = cur.fetchone()
+    if not r:
+        return jsonify(ok=False, error="not found"), 404
+    v = dict(zip(("name", "email", "phone", "country", "role", "timeframe", "message"), r[2:9]))
+    v = {k: (val or "") for k, val in v.items()}
+    err = None
+    try:
+        send_notification(r[0], r[1], v, r[9])
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"[:500]
+    with db() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE nemo_enquiries SET emailed=%s, email_error=%s WHERE id=%s", (err is None, err, enq_id))
+        conn.commit()
+    return jsonify(ok=err is None, error=err), (200 if err is None else 500)
 
 
 @app.get("/")
