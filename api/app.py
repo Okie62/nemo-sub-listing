@@ -525,6 +525,45 @@ def resend(enq_id):
     return jsonify(ok=err is None, error=err), (200 if err is None else 500)
 
 
+@app.get("/admin/probe")
+@require_admin
+def probe():
+    """
+    TCP reachability check. Render's free tier blocks outbound SMTP ports;
+    paid instances allow them. Use this to prove egress before wiring a
+    mail host, e.g. /admin/probe?host=smtp.serverdata.net&port=587
+    """
+    host = request.args.get("host", SMTP_HOST)
+    ports = request.args.get("port", "587,465,25").split(",")
+    out = {"host": host, "results": {}}
+    for p in ports:
+        p = p.strip()
+        if not p.isdigit():
+            continue
+        t0 = time.time()
+        try:
+            s = socket.create_connection((host, int(p)), timeout=12)
+            banner = ""
+            try:
+                s.settimeout(6)
+                banner = s.recv(200).decode(errors="replace").strip()
+            except Exception:
+                pass
+            s.close()
+            out["results"][p] = {
+                "open": True,
+                "ms": int((time.time() - t0) * 1000),
+                "banner": banner[:160],
+            }
+        except Exception as e:
+            out["results"][p] = {
+                "open": False,
+                "ms": int((time.time() - t0) * 1000),
+                "error": f"{type(e).__name__}: {e}"[:160],
+            }
+    return jsonify(out)
+
+
 @app.get("/")
 def root():
     return jsonify(service="nemo-enquiries", ok=True)
