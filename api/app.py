@@ -210,19 +210,32 @@ def _sendgrid_send(msg):
     if not SENDGRID_KEY:
         raise RuntimeError("SENDGRID_API_KEY not configured")
 
+    # SendGrid rejects the whole request on duplicate recipients.
+    seen, tos = set(), []
+    for a in NOTIFY_TO:
+        k = a.lower()
+        if k not in seen:
+            seen.add(k)
+            tos.append({"email": a})
+
     payload = {
-        "personalizations": [{"to": [{"email": a} for a in NOTIFY_TO]}],
+        "personalizations": [{"to": tos}],
         "from": {"email": MAIL_FROM, "name": MAIL_FROM_NAME},
         "subject": msg["Subject"],
         "content": [{"type": "text/plain", "value": msg.get_content()}],
     }
     if msg["Reply-To"]:
-        addr = msg["Reply-To"]
+        addr = str(msg["Reply-To"])
         if "<" in addr:
             name, email = addr.rsplit("<", 1)
-            payload["reply_to"] = {"email": email.strip(" >"), "name": name.strip()}
+            rt = {"email": email.strip(" >")}
+            # An empty or comma-bearing display name makes SendGrid 400.
+            name = name.strip().strip('"').replace(",", " ").strip()
+            if name:
+                rt["name"] = name[:78]
         else:
-            payload["reply_to"] = {"email": addr.strip()}
+            rt = {"email": addr.strip()}
+        payload["reply_to"] = rt
 
     req = urllib.request.Request(
         "https://api.sendgrid.com/v3/mail/send",
@@ -233,7 +246,7 @@ def _sendgrid_send(msg):
     with urllib.request.urlopen(req, timeout=30) as resp:
         if resp.status not in (200, 202):
             raise RuntimeError(f"sendgrid returned {resp.status}")
-    log.info("sendgrid accepted mail for %s", NOTIFY_TO)
+    log.info("sendgrid accepted mail for %s", [t["email"] for t in tos])
     return "sendgrid"
 
 
