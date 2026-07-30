@@ -328,15 +328,20 @@ def _smtp_connect():
     raise RuntimeError("all SMTP attempts failed — last: " + str(last))
 
 
-def _dispatch(msg):
+def _dispatch(msg, only=None):
     """
     Try each transport in order and return the name of the one that worked.
     SendGrid first (HTTPS, SPF-aligned for oktechsol.com), then Gmail API
     (HTTPS but rewrites the From to the authenticated Google account), then
-    SMTP (blocked on Render's free tier, kept for portability).
+    SMTP. Pass only='smtp' to force one transport when testing.
     """
+    chain = (("sendgrid", _sendgrid_send), ("gmail", _gmail_send), ("smtp", _smtp_send))
+    if only:
+        chain = tuple(c for c in chain if c[0] == only)
+        if not chain:
+            raise RuntimeError(f"unknown transport '{only}'")
     errors = []
-    for name, fn in (("sendgrid", _sendgrid_send), ("gmail", _gmail_send), ("smtp", _smtp_send)):
+    for name, fn in chain:
         try:
             fn(msg)
             return name
@@ -491,7 +496,7 @@ def smtp_test():
             "this distribution list.\n\n"
             "https://okie62.github.io/nemo-sub-listing/\n"
         )
-        info["via"] = _dispatch(msg)
+        info["via"] = _dispatch(msg, only=request.args.get("via"))
         info["sent"] = True
     except Exception as e:
         info["sent"] = False
