@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Hero Loop Comparison — NEMO listing</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#05131f;--deep:#0a2233;--foam:#4db8d4;--pale:#a9d8e6;
+    --sand:#f4f1ea;--muted:#7d97a5;--line:rgba(169,216,230,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--abyss);color:var(--sand);font-size:14px}
+  .bar{padding:22px 40px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(5,19,31,.95);backdrop-filter:blur(12px);z-index:50}
+  .bar h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:500}
+  .bar p{color:var(--muted);font-size:12.5px;margin-top:4px}
+
+  .opt{border-bottom:1px solid var(--line)}
+  .lbl{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:20px 40px 14px;
+  }
+  .lbl .n{
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--abyss);background:var(--foam);padding:4px 11px;border-radius:2px;font-weight:700;
+  }
+  .lbl .t{font-family:'Playfair Display',serif;font-size:20px}
+  .lbl .m{color:var(--muted);font-size:12px;letter-spacing:.04em}
+  .lbl .live{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7ee0a0;border:1px solid #2f6b45;padding:3px 9px;border-radius:2px}
+
+  /* mimic the real hero */
+  .hero{position:relative;height:74vh;min-height:520px;display:flex;align-items:flex-end;overflow:hidden}
+  .hero video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 62%;z-index:0}
+  .hero::after{
+    content:'';position:absolute;inset:0;z-index:1;
+    background:
+      linear-gradient(to right,rgba(5,19,31,.86) 0%,rgba(5,19,31,.62) 38%,rgba(5,19,31,.18) 68%,rgba(5,19,31,.28) 100%),
+      linear-gradient(to bottom,rgba(5,19,31,.48) 0%,rgba(5,19,31,.10) 32%,rgba(5,19,31,.72) 76%,var(--abyss) 100%);
+  }
+  .inner{position:relative;z-index:2;padding:0 40px 54px;max-width:1200px;width:100%;margin:0 auto}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--foam);margin-bottom:16px;font-weight:600}
+  .eyebrow::before{content:'';width:34px;height:1px;background:var(--foam)}
+  h2{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,4rem);line-height:1.02;font-weight:500;letter-spacing:-.02em;margin-bottom:14px;text-shadow:0 2px 26px rgba(3,9,16,.55)}
+  h2 em{font-style:italic;color:var(--pale)}
+  .sub{font-size:1rem;color:var(--pale);max-width:600px;font-weight:300;text-shadow:0 1px 14px rgba(3,9,16,.7)}
+  .meta{display:flex;flex-wrap:wrap;gap:30px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+  .meta .k{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .meta .v{font-size:1.2rem;font-weight:600;color:#fff}
+  .meta .v small{font-size:.7rem;font-weight:400;color:var(--pale);display:block}
+
+  .foot{padding:34px 40px 70px;color:var(--muted);font-size:12.5px;line-height:1.8;max-width:900px}
+  .foot b{color:var(--sand)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Hero loop — three options</h1>
+  <p>Same overlay, same text, same crop. Only the footage differs. Scroll to compare.</p>
+</div>
+
+<!-- OPTION 1 -->
+<div class="opt">
+  <div class="lbl">
+    <span class="n">Option 1</span>
+    <span class="t">Reef cruise</span>
+    <span class="live">Currently live</span>
+    <span class="m">source 66.55–69.95s · 6.80s loop · MP4 691 KB</span>
+  </div>
+  <div class="hero">
+    <video autoplay muted loop playsinline preload="auto" poster="img/hero-poster.jpg">
+      <source src="img/hero-720.webm" type="video/webm">
+      <source src="img/hero-720.mp4" type="video/mp4">
+    </video>
+    <div class="inner">
+      <span class="eyebrow">Available Now &middot; Breda, The Netherlands</span>
+      <h2>U-Boat Worx<br><em>NEMO</em></h2>
+      <p class="sub">A two-person, 100-metre submersible &mdash; the lightest submarine ever built, and the only one in series production.</p>
+      <div class="meta">
+        <div><span class="k">Depth</span><span class="v">100 m<small>328 ft</small></span></div>
+        <div><span class="k">Occupancy</span><span class="v">2<small>1 pilot + 1 guest</small></span></div>
+        <div><span class="k">Model</span><span class="v">NM2-100<small>Series production</small></span></div>
+        <div><span class="k">Price</span><span class="v">POA<small>Price on application</small></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION 2 -->
+<div class="opt">
+  <div class="lbl">
+    <span class="n">Option 2</span>
+    <span class="t">Open blue &amp; baitfish</span>
+    <span class="m">source 60.75–62.95s · 4.40s loop · MP4 464 KB &mdash; smallest file</span>
+  </div>
+  <div class="hero">
+    <video autoplay muted loop playsinline preload="auto" poster="img/alt-blue-poster.jpg">
+      <source src="img/alt-blue.webm" type="video/webm">
+      <source src="img/alt-blue.mp4" type="video/mp4">
+    </video>
+    <div class="inner">
+      <span class="eyebrow">Available Now &middot; Breda, The Netherlands</span>
+      <h2>U-Boat Worx<br><em>NEMO</em></h2>
+      <p class="sub">A two-person, 100-metre submersible &mdash; the lightest submarine ever built, and the only one in series production.</p>
+      <div class="meta">
+        <div><span class="k">Depth</span><span class="v">100 m<small>328 ft</small></span></div>
+        <div><span class="k">Occupancy</span><span class="v">2<small>1 pilot + 1 guest</small></span></div>
+        <div><span class="k">Model</span><span class="v">NM2-100<small>Series production</small></span></div>
+        <div><span class="k">Price</span><span class="v">POA<small>Price on application</small></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTION 3 -->
+<div class="opt">
+  <div class="lbl">
+    <span class="n">Option 3</span>
+    <span class="t">Reef ledge &amp; fish</span>
+    <span class="m">source 55.25–58.45s · 6.40s loop · MP4 736 KB &mdash; longest continuous take</span>
+  </div>
+  <div class="hero">
+    <video autoplay muted loop playsinline preload="auto" poster="img/alt-reef-poster.jpg">
+      <source src="img/alt-reef.webm" type="video/webm">
+      <source src="img/alt-reef.mp4" type="video/mp4">
+    </video>
+    <div class="inner">
+      <span class="eyebrow">Available Now &middot; Breda, The Netherlands</span>
+      <h2>U-Boat Worx<br><em>NEMO</em></h2>
+      <p class="sub">A two-person, 100-metre submersible &mdash; the lightest submarine ever built, and the only one in series production.</p>
+      <div class="meta">
+        <div><span class="k">Depth</span><span class="v">100 m<small>328 ft</small></span></div>
+        <div><span class="k">Occupancy</span><span class="v">2<small>1 pilot + 1 guest</small></span></div>
+        <div><span class="k">Model</span><span class="v">NM2-100<small>Series production</small></span></div>
+        <div><span class="k">Price</span><span class="v">POA<small>Price on application</small></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <p><b>All three</b> are ping-pong loops (forward then reversed) cut from single continuous shots in the official U-Boat Worx NEMO promo, verified free of hidden cuts. Each encodes to VP9 WebM with an H.264 MP4 fallback, muted, autoplaying, <code>playsinline</code>, with a poster frame for first paint and for <code>prefers-reduced-motion</code>.</p>
+  <p style="margin-top:12px">Tell me which number you want and I'll make it the live hero. This comparison page is <b>noindex</b> and can be deleted afterwards.</p>
+</div>
+
+</body>
+</html>
