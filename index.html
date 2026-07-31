@@ -64,14 +64,20 @@
   /* ---------- hero ---------- */
   .hero{
     position:relative;min-height:100vh;display:flex;align-items:flex-end;
-    background:url('img/nemo-table-mountain.jpg') center 40%/cover no-repeat;
+    background:url('img/hero-poster.jpg') center center/cover no-repeat;
+    overflow:hidden;
+  }
+  .hero-video{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;z-index:0;
   }
   .hero::after{
-    content:'';position:absolute;inset:0;
+    content:'';position:absolute;inset:0;z-index:1;
     background:
-      linear-gradient(to right,rgba(5,19,31,.92) 0%,rgba(5,19,31,.72) 42%,rgba(5,19,31,.22) 72%,rgba(5,19,31,.35) 100%),
-      linear-gradient(to bottom,rgba(5,19,31,.60) 0%,rgba(5,19,31,.18) 30%,rgba(5,19,31,.80) 74%,var(--abyss) 100%);
+      linear-gradient(to right,rgba(5,19,31,.86) 0%,rgba(5,19,31,.62) 38%,rgba(5,19,31,.18) 68%,rgba(5,19,31,.28) 100%),
+      linear-gradient(to bottom,rgba(5,19,31,.48) 0%,rgba(5,19,31,.10) 32%,rgba(5,19,31,.72) 76%,var(--abyss) 100%);
   }
+  @media (prefers-reduced-motion:reduce){.hero-video{display:none}}
   .hero-inner{position:relative;z-index:2;padding:0 40px 90px;max-width:1200px;width:100%;margin:0 auto}
   .eyebrow{
     display:inline-flex;align-items:center;gap:10px;
@@ -331,6 +337,11 @@
 </nav>
 
 <header class="hero">
+  <video class="hero-video" autoplay muted loop playsinline preload="auto"
+         poster="img/hero-poster.jpg" aria-hidden="true" tabindex="-1">
+    <source src="img/hero-720.webm" type="video/webm">
+    <source src="img/hero-720.mp4" type="video/mp4">
+  </video>
   <div class="hero-inner">
     <span class="eyebrow">Available Now &middot; Breda, The Netherlands</span>
     <h1>U-Boat Worx<br><em>NEMO</em></h1>
