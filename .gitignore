@@ -6,3 +6,6 @@ _shot.html
 docs/
 *.pdf
 *.docx
+
+# NEMO source clips — 52MB of raw video, not for the public repo
+.source-clips/
