@@ -1,2 +1,8 @@
 .DS_Store
 _shot.html
+
+# Buyer-qualified material — NEVER publish to this public repo.
+# The logbook / spec documents are released to qualified buyers only.
+docs/
+*.pdf
+*.docx
